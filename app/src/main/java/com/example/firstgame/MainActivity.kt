@@ -3,7 +3,9 @@ package com.example.firstgame
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
 import android.util.Log
+import android.view.View
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.net.toUri
@@ -22,22 +24,29 @@ import java.util.*
 
 class MainActivity : AppCompatActivity() {
     val BUFFER = 8192
-
-
+    var mprogress =0
+    var mprogressLength = 0.0
+    val handler = Handler()
+    var dataCount=0
+    var dataLength=0.0
     @Throws(IOException::class)
     private fun zipSubFolder(out: ZipOutputStream, folder: File, basePathLength: Int) {
         Log.v("Compress",folder.absolutePath)
 
 
         val fileList = folder.listFiles()
-        var origin: BufferedInputStream? = null
+        var origin: BufferedInputStream?
         for (file in fileList) {
             if (file.isDirectory) {
                 zipSubFolder(out, file, basePathLength)
             } else {
-
                 val unmodifiedFilePath = file.path
                 val relativePath = unmodifiedFilePath.substring(basePathLength + 1)
+                handler.post(Runnable {
+                    loadFileText.text = file.name+"..."
+
+                    progressCount.text="("+mprogress+ "/"+ dataCount+")"
+                })
                 Log.v("Compress",relativePath)
 
                 val fi = FileInputStream(unmodifiedFilePath)
@@ -48,6 +57,12 @@ class MainActivity : AppCompatActivity() {
                 out.putNextEntry(entry)
 
                 origin.copyTo(out, BUFFER)
+                mprogress++
+                mprogressLength+=file.length()
+                Log.v("Progressy",mprogress.toString())
+                progressBar.setProgress(mprogress)
+
+
                 Log.v("Compress","Compress OK")
                 origin.close()
                 out.closeEntry()
@@ -56,9 +71,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun zipFolder(toZipFolder: File): File? {
+        var dataLength=0.0
         val destinationFolder = "/sdcard/BackUpp/"
         val timeStamp: String = SimpleDateFormat("yyyyMMdd").format(Date())
-
+        toZipFolder.walk().forEach {
+            if (!it.isDirectory){
+                dataLength += it.length()
+                dataCount++
+            }
+        }
+        progressBar.setMax(dataCount)
+        Log.v("Progressy",dataCount.toString())
         val zipFile = File(destinationFolder, toZipFolder.name.replace(" ", "_")+  timeStamp +".zip")
         try {
             val out = ZipOutputStream(FileOutputStream(zipFile))
@@ -100,14 +123,30 @@ class MainActivity : AppCompatActivity() {
             startActivityForResult(Intent.createChooser(intent, "Select a file"), 111)
 
         }
+
+
     }
     override fun onActivityResult(requestCode:Int, resultCode:Int, data:Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
         if (requestCode == 111 && resultCode == RESULT_OK) {
             val selectedFile = data?.data
+            progressBar.visibility=View.VISIBLE
+            Thread(Runnable {
+                zip(selectedFile.toString().toUri())
 
-            zip(selectedFile.toString().toUri())
+                dataCount=0
+                mprogress=0
+                handler.post(Runnable {
+                    progressBar.visibility=View.INVISIBLE
+                    progressBar.progress=mprogress
+                    loadFileText.text=""
+                    progressCount.text=""
+
+                })
+
+            }).start()
+
             Log.i("blub","end...")
         }
     }
