@@ -44,7 +44,7 @@ class MainActivity : AppCompatActivity() {
                 val relativePath = unmodifiedFilePath.substring(basePathLength + 1)
                 handler.post(Runnable {
                     loadFileText.text = file.name+"..."
-
+                    button.visibility=View.INVISIBLE
                     progressCount.text="("+mprogress+ "/"+ dataCount+")"
                 })
                 Log.v("Compress",relativePath)
@@ -142,6 +142,7 @@ class MainActivity : AppCompatActivity() {
                     progressBar.progress=mprogress
                     loadFileText.text=""
                     progressCount.text=""
+                    button.visibility=View.VISIBLE
 
                 })
 
